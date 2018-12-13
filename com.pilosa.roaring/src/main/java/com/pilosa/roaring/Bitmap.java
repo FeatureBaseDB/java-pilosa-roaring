@@ -1,9 +1,5 @@
 package com.pilosa.roaring;
 
-import org.omg.PortableInterceptor.SYSTEM_EXCEPTION;
-
-import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
@@ -129,16 +125,9 @@ class BitmapBitIterator implements BitIterator {
         // Java 7 compatibility
     }
 
-    /*
-    #define MAGIC_NUMBER 12348
-#define STORAGE_VERSION 0
-#define COOKIE (MAGIC_NUMBER + (STORAGE_VERSION << 16))
-     */
-
-    private Bitmap bitmap;
     private Iterator<Map.Entry<Long, Container>> entryIterator;
     private long key;
-    private BitIterator bitIterator = null;
+    private Iterator<Integer> bitIterator = null;
     private boolean stopped = false;
 
 }

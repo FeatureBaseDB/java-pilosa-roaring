@@ -3,7 +3,6 @@ package com.pilosa.roaring;
 import org.junit.Test;
 
 import java.io.*;
-import java.math.BigInteger;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -31,11 +30,12 @@ public class BitmapTest {
         Bitmap bmp = getSampleBitmap();
         ByteBuffer buf = bmp.serialize();
         byte[] target = getSerializedBitmap();
-        assertEquals(target.length, buf.array().length);
-        assertArrayEquals(target, buf.array());
+        byte[] arr = buf.array();
+        assertEquals(target.length, arr.length);
+        assertArrayEquals(target, arr);
     }
 
-    public Bitmap getSampleBitmap() {
+    private Bitmap getSampleBitmap() {
         List<Long> arr = getTargetList();
         Bitmap bmp = new Bitmap();
         for (long bit : arr) {
@@ -44,7 +44,7 @@ public class BitmapTest {
         return bmp;
     }
 
-    public byte[] getSerializedBitmap() throws IOException {
+    private byte[] getSerializedBitmap() throws IOException {
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         URL uri = loader.getResource("serialized.bitmap");
         if (uri == null) {
@@ -61,7 +61,7 @@ public class BitmapTest {
         return outputStream.toByteArray();
     }
 
-    public List<Long> getTargetList() {
+    private List<Long> getTargetList() {
         ArrayList<Long> arr = new ArrayList<>();
         for (long i = 0; i < 4096; i++) {
             arr.add(i);
