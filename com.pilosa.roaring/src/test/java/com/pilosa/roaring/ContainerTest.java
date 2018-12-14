@@ -3,9 +3,10 @@ package com.pilosa.roaring;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertArrayEquals;
 
 public class ContainerTest {
     @Test
@@ -14,12 +15,12 @@ public class ContainerTest {
         con.add((short)42);
         con.add((short)15534);
         con.add((short)15535);
-        BitIterator iter = con.iterator();
+        Iterator<Integer> iter = con.iterator();
         List<Long> bits = new ArrayList<>(3);
         while (iter.hasNext()) {
-            bits.add(iter.next());
+            bits.add((long)iter.next());
         }
         Long target[] = new Long[] {42L, 15534L, 15535L};
-        assertEquals(target, bits.toArray());
+        assertArrayEquals(target, bits.toArray());
     }
 }

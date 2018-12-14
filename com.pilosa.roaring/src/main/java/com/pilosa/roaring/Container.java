@@ -2,28 +2,25 @@ package com.pilosa.roaring;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 class Container {
     Container() {
-        this.bitmaps = new long[BITMAP_N];
+        this.bits = new TreeSet<>();
     }
 
     void add(long bit) {
-        if ((this.bitmaps[(int)(bit >>> 6)] & (1L << (bit % 64))) == 1) {
-            return;
-        }
-        this.bit_count += 1;
-        this.bitmaps[(int)(bit >>> 6)] |= (1L << (bit % 64));
+        this.bits.add((int)bit);
     }
 
-    BitIterator iterator() {
-        return new ContainerBitIterator(this);
+    Iterator<Integer> iterator() {
+        return this.bits.iterator();
     }
 
     ContainerMeta serializedProperties() {
         int index = 0;
-        long sizes[] = new long[] {2 * this.bit_count, 8 * BITMAP_N, 0};
+        short bit_count = (short)this.bits.size();
+        long sizes[] = new long[] {2 * bit_count, 8 * BITMAP_N, 0};
         short types[] = new short[] {TYPE_ARRAY, TYPE_BITMAP, TYPE_RLE};
         long runCount = countRuns();
         if (runCount > MAX_RUNS) {
@@ -35,20 +32,37 @@ class Container {
             if (sizes[1] < sizes[index]) index = 1;
             if (sizes[2] < sizes[index]) index = 2;
         }
-        return new ContainerMeta(sizes[index], types[index], this.bit_count);
+        return new ContainerMeta(sizes[index], types[index], bit_count);
     }
 
     void serializeAsArrayInto(ByteBuffer buf) {
-        BitIterator it = iterator();
-        while (it.hasNext()) {
-            long bit = it.next();
+        for (long bit : this.bits) {
             buf.putShort((short)bit);
         }
     }
 
     void serializeAsBitmapInto(ByteBuffer buf) {
-        for (long bitmap : this.bitmaps) {
-            buf.putLong(bitmap);
+        long bitmap = 0;
+        int bitmapIndex = 0;
+        for (long bit : this.bits) {
+            int index = (int)(bit >>> 6);
+            if (index != bitmapIndex) {
+                // put the current bitmap
+                buf.putLong(bitmap);
+                // put empty bitmaps
+                for (int i = bitmapIndex + 1; i < index; i++) {
+                    buf.putLong(0L);
+                }
+                bitmapIndex = index;
+                bitmap = 0L;
+            }
+            bitmap |= (1L << (bit % 64));
+        }
+        // put the current bitmap
+        buf.putLong(bitmap);
+        // put remaining empty bitmaps
+        for (int i = bitmapIndex + 1; i < BITMAP_N; i++) {
+            buf.putLong(0L);
         }
     }
 
@@ -57,7 +71,7 @@ class Container {
         // temporarily put the rle length
         short runCount = 0;
         buf.putShort(runCount);
-        BitIterator it = iterator();
+        Iterator<Integer> it = iterator();
         if (!it.hasNext()) {
             return;
         }
@@ -84,30 +98,16 @@ class Container {
 
     private long countRuns() {
         long runCount = 0;
-        Long start = null;
-        long last = 0;
-
-        for (int bx = 0; bx < BITMAP_N; bx++) {
-            long bitmap = this.bitmaps[bx];
-            if (bitmap == 0) {
+        Iterator<Integer> it = iterator();
+        long last = it.next();
+        while (it.hasNext()) {
+            long bit = it.next();
+            if (bit == last + 1) {
+                last = bit;
                 continue;
             }
-            for (int p = 0; p < 64; p++) {
-                long v = 1L << p;
-                if ((bitmap & v) == v) {
-                    Long bit = bx *64L + p;
-                    if (start == null) {
-                        start = last = bit;
-                        continue;
-                    }
-                    if (bit == last + 1) {
-                        last = bit;
-                        continue;
-                    }
-                    runCount += 1;
-                    start = last = bit;
-                }
-            }
+            // run ended
+            runCount += 1;
         }
         runCount += 1;
         return runCount;
@@ -119,68 +119,11 @@ class Container {
     static final int TYPE_BITMAP = 2;
     static final int TYPE_RLE = 3;
 
-    long[] bitmaps;
-    private  short bit_count = 0;
-}
-
-class ContainerBitIterator implements BitIterator {
-
-    ContainerBitIterator(Container container) {
-        this.container = container;
-    }
-
-    public boolean hasNext() {
-        if (this.stopped) {
-            return false;
-        }
-        if (this.nextBit != null) {
-            return true;
-        }
-        long[] bitmaps = this.container.bitmaps;
-        while (this.nextBitmapIndex < Container.BITMAP_N) {
-            short nextBitmapIndex = this.nextBitmapIndex;
-            short nextBitIndex = this.nextBitIndex;
-            this.nextBitIndex += 1;
-            if (this.nextBitIndex == 64) {
-                this.nextBitIndex = 0;
-                this.nextBitmapIndex += 1;
-            }
-            long bitmap = bitmaps[nextBitmapIndex];
-            if (bitmap == 0) {
-                continue;
-            }
-            long v = 1L << nextBitIndex;
-            if ((bitmap & v) == v) {
-                this.nextBit = nextBitmapIndex * 64  + nextBitIndex;
-                return true;
-            }
-        }
-        this.stopped = true;
-        return false;
-    }
-
-    public Long next() {
-        if (this.stopped) {
-            throw new NoSuchElementException();
-        }
-        long value = this.nextBit;
-        this.nextBit = null;
-        return value;
-    }
-
-    public void remove() {
-        // Java 7 compatibility
-    }
-
-    private Container container;
-    private short nextBitmapIndex = 0;
-    private short nextBitIndex = 0;
-    private Integer nextBit;
-    private boolean stopped = false;
+    Set<Integer> bits;
 }
 
 class ContainerMeta {
-    public ContainerMeta(long size, short type, short bit_count) {
+    ContainerMeta(long size, short type, short bit_count) {
         this.size = size;
         this.type = type;
         this.bit_count = bit_count;
