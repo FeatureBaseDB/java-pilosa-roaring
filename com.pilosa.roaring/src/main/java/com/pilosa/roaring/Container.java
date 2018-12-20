@@ -44,26 +44,20 @@ class Container {
     void serializeAsBitmapInto(ByteBuffer buf) {
         long bitmap = 0;
         int bitmapIndex = 0;
+        ByteBuffer bmpBuf = ByteBuffer.allocate(8 * BITMAP_N).order(ByteOrder.LITTLE_ENDIAN);;
         for (long bit : this.bits) {
             int index = (int)(bit >>> 6);
             if (index != bitmapIndex) {
                 // put the current bitmap
-                buf.putLong(bitmap);
-                // put empty bitmaps
-                for (int i = bitmapIndex + 1; i < index; i++) {
-                    buf.putLong(0L);
-                }
+                bmpBuf.putLong(8 * bitmapIndex, bitmap);
                 bitmapIndex = index;
                 bitmap = 0L;
             }
             bitmap |= (1L << (bit % 64));
         }
         // put the current bitmap
-        buf.putLong(bitmap);
-        // put remaining empty bitmaps
-        for (int i = bitmapIndex + 1; i < BITMAP_N; i++) {
-            buf.putLong(0L);
-        }
+        bmpBuf.putLong(8 * bitmapIndex, bitmap);
+        buf.put(bmpBuf);
     }
 
     void serializeAsRLE(ByteBuffer buf) {
