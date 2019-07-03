@@ -20,8 +20,8 @@ class Container {
     ContainerMeta serializedProperties() {
         int index = 0;
         int bit_count = this.bits.size();
-        long sizes[] = new long[] {2 * bit_count, 8 * BITMAP_N, 0};
-        short types[] = new short[] {TYPE_ARRAY, TYPE_BITMAP, TYPE_RLE};
+        long[] sizes = new long[]{2 * bit_count, 8 * BITMAP_N, 0};
+        short[] types = new short[]{TYPE_ARRAY, TYPE_BITMAP, TYPE_RLE};
         long runCount = countRuns();
         if (runCount > MAX_RUNS) {
             // encoding in RLE would produce invalid data; don't bother.
@@ -44,7 +44,7 @@ class Container {
     void serializeAsBitmapInto(ByteBuffer buf) {
         long bitmap = 0;
         int bitmapIndex = 0;
-        ByteBuffer bmpBuf = ByteBuffer.allocate(8 * BITMAP_N).order(ByteOrder.LITTLE_ENDIAN);;
+        ByteBuffer bmpBuf = ByteBuffer.allocate(8 * BITMAP_N).order(ByteOrder.LITTLE_ENDIAN);
         for (long bit : this.bits) {
             int index = (int)(bit >>> 6);
             if (index != bitmapIndex) {
