@@ -19,7 +19,7 @@ class Container {
 
     ContainerMeta serializedProperties() {
         int index = 0;
-        short bit_count = (short)this.bits.size();
+        int bit_count = this.bits.size();
         long sizes[] = new long[] {2 * bit_count, 8 * BITMAP_N, 0};
         short types[] = new short[] {TYPE_ARRAY, TYPE_BITMAP, TYPE_RLE};
         long runCount = countRuns();
@@ -117,7 +117,7 @@ class Container {
 }
 
 class ContainerMeta {
-    ContainerMeta(long size, short type, short bit_count) {
+    ContainerMeta(long size, short type, int bit_count) {
         this.size = size;
         this.type = type;
         this.bit_count = bit_count;
@@ -134,6 +134,6 @@ class ContainerMeta {
 
     long size;
     short type;
-    short bit_count;
+    int bit_count;
     long key;
 }
